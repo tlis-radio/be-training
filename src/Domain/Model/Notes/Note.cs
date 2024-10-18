@@ -52,7 +52,7 @@ public class Note : AggregateRoot<NoteId>
     {
         Title = title;
         
-        Enqueue(new NoteTitleChanged(title));
+        Enqueue(new NoteTitleChanged(title)); 
     }
 
     public void ChangeText(string text)

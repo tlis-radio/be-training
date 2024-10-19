@@ -9,6 +9,7 @@ using Infrastructure.DataAccess.Notes.Projections.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
@@ -20,7 +21,8 @@ public static class InfrastructureModule
     public static void AddInfrastructureModule(this IServiceCollection services)
     {
         BsonSerializer.RegisterSerializer(new ObjectSerializer(ObjectSerializer.AllAllowedTypes));
-        
+        BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+
         services.AddScoped<IEventStore, EventStore>();
         services.AddScoped<IMongoDatabase>(provider =>
         {
@@ -32,7 +34,7 @@ public static class InfrastructureModule
             sequence.Insert(client.GetDatabase("NotesEventStore"));
             return client.GetDatabase("NotesEventStore");
         });
-        services.AddScoped<NotesRepository>();
+        services.AddScoped<INotesRepository, NotesRepository>();
         services.AddDbContext<NotesProjectionsDbContext>((provider, builder) =>
         {
             builder.UseInMemoryDatabase("NotesInMemoryDatabase");

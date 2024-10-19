@@ -77,6 +77,9 @@ public class Note : AggregateRoot<NoteId>
             case NoteTextChanged noteTextChanged:
                 Text = noteTextChanged.Text;
                 break;
+            case NoteDeleted:
+                //TODO: Ask what should I do with a deleted entity
+                break;
         }
     }
 }

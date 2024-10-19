@@ -1,16 +1,17 @@
-﻿using Application.Features;
-using Application.Features.Notes;
+﻿using Application.Features.Notes;
 using Application.Features.Notes.Projections;
 using Core.Domain.Model;
 using Domain.Model.Notes;
 using Domain.Model.Notes.Events;
+using MediatR;
 
 namespace Application.Handlers.Notes;
 
-public class NotesProjectionsUpdater(NoteProjectionsUnitOfWork unitOfWork, INotesRepository notesRepository) :
+public class NotesProjectionsUpdater(NoteProjectionsUnitOfWork unitOfWork, INotesRepository notesRepository, ISender sender) :
     IEventHandler<NewNoteCreated, NoteId>,
     IEventHandler<NoteTextChanged, NoteId>,
-    IEventHandler<NoteTitleChanged, NoteId>
+    IEventHandler<NoteTitleChanged, NoteId>,
+    IEventHandler<NoteDeleted, NoteId>
 {
     public async Task Handle(NewNoteCreated newNoteCreated, CancellationToken cancellationToken)
     {
@@ -44,12 +45,17 @@ public class NotesProjectionsUpdater(NoteProjectionsUnitOfWork unitOfWork, INote
         await unitOfWork.NoteProjections.Update(noteProjection, cancellationToken);
     }
 
+    public async Task Handle(NoteDeleted noteDeleted, CancellationToken cancellationToken) =>
+        await unitOfWork.NoteProjections.Delete([noteDeleted.AggregateRootId.Value], cancellationToken);
+
     private async Task<NoteProjection> RetrieveById(NoteId noteId, CancellationToken cancellationToken)
     {
         NoteProjection? noteProjection = await unitOfWork.NoteProjections.Read([noteId.Value], cancellationToken);
 
         if (noteProjection is not null)
             return noteProjection;
+        
+        //TODO: Should I check whether an entity is deleted or does not exist here?
 
         Note note = await notesRepository.GetById(noteId, cancellationToken);
 

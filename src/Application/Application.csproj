@@ -7,13 +7,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Features\Notes\Commands\" />
     <Folder Include="Features\Notes\Dtos\" />
-    <Folder Include="Features\Notes\Queries\" />
+    <Folder Include="Features\Notes\Queries\List\" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Domain\Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="11.10.0" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.10.0" />
   </ItemGroup>
 
 </Project>

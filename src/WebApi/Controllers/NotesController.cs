@@ -1,41 +1,43 @@
-﻿using Infrastructure.DataAccess.Models;
-using Infrastructure.DataAccess.Repositories;
+﻿using Application.Features.Notes.Commands.Create;
+using Application.Features.Notes.Commands.Delete;
+using Application.Features.Notes.Commands.Update;
+using Application.Features.Notes.Projections;
+using Application.Features.Notes.Queries.Get;
+using Domain.Model.Notes;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using WebApi.Dtos;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("[controller]/[action]")]
-public class NotesController(NotesRepository notesRepository) : ControllerBase
+public class NotesController(IMediator mediator) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateNoteDto createNoteDto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        
-        var note = new Note
-        {
-            Title = createNoteDto.Titile,
-            Text = createNoteDto.Text
-        };
 
-        int noteId = await notesRepository.Create(note, HttpContext.RequestAborted);
+        NoteId noteId = await mediator.Send(new CreateNoteCommand(createNoteDto.Title, createNoteDto.Text),
+            HttpContext.RequestAborted);
 
-        string uri = Url.Action("GetById", new { id = noteId })!;
+        string uri = Url.Action("GetById", new { id = noteId.Value })!;
 
         return Created(uri, new { Id = noteId });
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById([FromRoute] int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
-        Note? note = await notesRepository.Read(id, HttpContext.RequestAborted);
+        var noteId = new NoteId(id);
+        bool exist = await mediator.Send(new ExistQuery(noteId), HttpContext.RequestAborted);
 
-        if (note is null)
+        if (!exist)
             return NotFound();
+
+        NoteProjection note = await mediator.Send(new GetByIdQuery(noteId), HttpContext.RequestAborted);
 
         return Ok(note);
     }
@@ -43,39 +45,37 @@ public class NotesController(NotesRepository notesRepository) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        List<Note> notes = await notesRepository.Query().ToListAsync();
-
-        return Ok(notes);
+        throw new NotImplementedException();
     }
 
-    [HttpPatch("{id:int}")]
-    public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateNoteDto updateNoteDto)
+    [HttpPatch("{id:guid}")]
+    public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateNoteDto updateNoteDto)
     {
-        Note? note = await notesRepository.Read(id, HttpContext.RequestAborted);
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
         
-        if (note is null)
+        var noteId = new NoteId(id);
+        bool exist = await mediator.Send(new ExistQuery(noteId), HttpContext.RequestAborted);
+        
+        if (!exist)
             return NotFound();
 
-        if (updateNoteDto is { Title: not null })
-            note.Title = updateNoteDto.Title;
-
-        if (updateNoteDto is { Text: not null })
-            note.Text = updateNoteDto.Text;
-
-        await notesRepository.Update(note, HttpContext.RequestAborted);
+        await mediator.Send(new UpdateNoteCommand(noteId, updateNoteDto.Title, updateNoteDto.Text),
+            HttpContext.RequestAborted);
 
         return NoContent();
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete([FromRoute] int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
-        Note? note = await notesRepository.Read(id, HttpContext.RequestAborted);
+        var noteId = new NoteId(id);
+        bool exist = await mediator.Send(new ExistQuery(noteId), HttpContext.RequestAborted);
         
-        if (note is null)
+        if (!exist)
             return NotFound();
 
-        await notesRepository.Delete(note, HttpContext.RequestAborted);
+        await mediator.Send(new DeleteNoteCommand(noteId), HttpContext.RequestAborted);
 
         return NoContent();
     }

@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Application.Handlers.Notes;
 
-public class NotesProjectionsUpdater(NoteProjectionsUnitOfWork unitOfWork, INotesRepository notesRepository, ISender sender) :
+public class NotesProjectionsUpdater(NoteProjectionsUnitOfWork unitOfWork) :
     IEventHandler<NewNoteCreated, NoteId>,
     IEventHandler<NoteTextChanged, NoteId>,
     IEventHandler<NoteTitleChanged, NoteId>,
@@ -52,23 +52,8 @@ public class NotesProjectionsUpdater(NoteProjectionsUnitOfWork unitOfWork, INote
     {
         NoteProjection? noteProjection = await unitOfWork.NoteProjections.Read([noteId.Value], cancellationToken);
 
-        if (noteProjection is not null)
-            return noteProjection;
-        
-        //TODO: Should I check whether an entity is deleted or does not exist here?
-
-        Note note = await notesRepository.GetById(noteId, cancellationToken);
-
-        noteProjection = new NoteProjection
-        {
-            Id = note.Identity.Value,
-            Title = note.Title,
-            Text = note.Text,
-            Created = await notesRepository.Created(noteId, cancellationToken),
-            Updated = await notesRepository.Updated(noteId, cancellationToken)
-        };
-
-        await unitOfWork.NoteProjections.Create(noteProjection, cancellationToken);
+        if (noteProjection is null)
+            throw new InvalidOperationException("Trying to retrieve a projection that has not been created.");
 
         return noteProjection;
     }

@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Folder Include="Features\Notes\Dtos\" />
-    <Folder Include="Features\Notes\Queries\List\" />
   </ItemGroup>
 
   <ItemGroup>

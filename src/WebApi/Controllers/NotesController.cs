@@ -3,6 +3,7 @@ using Application.Features.Notes.Commands.Delete;
 using Application.Features.Notes.Commands.Update;
 using Application.Features.Notes.Projections;
 using Application.Features.Notes.Queries.Get;
+using Application.Features.Notes.Queries.List;
 using Domain.Model.Notes;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -32,9 +33,8 @@ public class NotesController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetById([FromRoute] Guid id)
     {
         var noteId = new NoteId(id);
-        bool exist = await mediator.Send(new ExistQuery(noteId), HttpContext.RequestAborted);
 
-        if (!exist)
+        if (!await mediator.Send(new ExistQuery(noteId), HttpContext.RequestAborted))
             return NotFound();
 
         NoteProjection note = await mediator.Send(new GetByIdQuery(noteId), HttpContext.RequestAborted);
@@ -45,7 +45,9 @@ public class NotesController(IMediator mediator) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        throw new NotImplementedException();
+        List<NoteProjection> noteProjections = await mediator.Send(new ListAllNotes(), HttpContext.RequestAborted);
+
+        return Ok(noteProjections);
     }
 
     [HttpPatch("{id:guid}")]
@@ -55,9 +57,8 @@ public class NotesController(IMediator mediator) : ControllerBase
             return BadRequest(ModelState);
         
         var noteId = new NoteId(id);
-        bool exist = await mediator.Send(new ExistQuery(noteId), HttpContext.RequestAborted);
         
-        if (!exist)
+        if (!await mediator.Send(new ExistQuery(noteId), HttpContext.RequestAborted))
             return NotFound();
 
         await mediator.Send(new UpdateNoteCommand(noteId, updateNoteDto.Title, updateNoteDto.Text),
@@ -70,9 +71,8 @@ public class NotesController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
         var noteId = new NoteId(id);
-        bool exist = await mediator.Send(new ExistQuery(noteId), HttpContext.RequestAborted);
         
-        if (!exist)
+        if (!await mediator.Send(new ExistQuery(noteId), HttpContext.RequestAborted))
             return NotFound();
 
         await mediator.Send(new DeleteNoteCommand(noteId), HttpContext.RequestAborted);

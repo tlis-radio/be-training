@@ -8,9 +8,13 @@ internal class StoredEvent
     
     public DateTime OccuredOn { get; set; }
     
-    public int Position { get; set; }
+    public long Position { get; set; }
     
-    public AbstractIdentity AggregateRootId { get; set; }
+    public string AggregateRootIdType { get; set; }
     
-    public IEvent Event { get; set; }
+    public string AggregateRootId { get; set; }
+    
+    public string EventType { get; set; }
+    
+    public string Event { get; set; }
 }

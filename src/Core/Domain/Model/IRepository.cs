@@ -7,6 +7,4 @@ public interface IRepository<TAggregateRoot, TIdentity>
     where TIdentity : AbstractIdentity
 {
     public Task<TAggregateRoot> GetById(TIdentity identity, CancellationToken cancellationToken = default);
-
-    public Task<bool> Exists(TIdentity identity, CancellationToken cancellationToken = default);
 }

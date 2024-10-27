@@ -1,73 +1,49 @@
-﻿using Core.Domain.Model;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-using MongoDB.Driver;
+﻿using System.Text.Json;
+using Core.Domain.Model;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.DataAccess;
 
-public class EventStore(IMongoDatabase database) : IEventStore
+public class EventStore(EventStoreDbContext dbContext) : IEventStore
 {
-    public async Task<List<IEvent<TIdentity>>> RetrieveEvents<TIdentity>(TIdentity aggregateRootId,
-        CancellationToken cancellationToken = default) where TIdentity : AbstractIdentity
+    public Task<List<IEvent<TIdentity>>> RetrieveEvents<TIdentity>(TIdentity aggregateRootId, CancellationToken cancellationToken = default) where TIdentity : AbstractIdentity
     {
-        IMongoCollection<StoredEvent> collection = database.GetCollection<StoredEvent>("Events");
-        IAsyncCursor<StoredEvent> cursor = await collection.FindAsync(@event => @event.AggregateRootId == aggregateRootId,
-            cancellationToken: cancellationToken);
-        List<StoredEvent> stagedEvents = await cursor.ToListAsync(cancellationToken: cancellationToken); 
-
-        return stagedEvents.OrderBy(@event => @event.Position)
-            .Select(@event => (IEvent<TIdentity>)@event.Event)
+        string aggregateRootIdJson = JsonSerializer.Serialize(aggregateRootId);
+        List<StoredEvent> storedEvents = dbContext.StoredEvents.AsNoTracking()
+            .Where(@event => @event.AggregateRootIdType == typeof(TIdentity).AssemblyQualifiedName)
+            .Where(@event => @event.AggregateRootId == aggregateRootIdJson)
+            .OrderBy(@event => @event.Position)
             .ToList();
+        
+        List<IEvent<TIdentity>> events = storedEvents.Select(@event =>
+        {
+            var eventType = Type.GetType(@event.EventType)!;
+            return (IEvent<TIdentity>)JsonSerializer.Deserialize(@event.Event, eventType)!;;
+        }).ToList();
+
+        return Task.FromResult(events);
     }
+    
 
-    public async Task AppendEvent<TIdentity>(IEvent<TIdentity> @event,
-        CancellationToken cancellationToken = default) where TIdentity : AbstractIdentity
+    public async Task AppendEvent<TIdentity>(IEvent<TIdentity> @event, CancellationToken cancellationToken = default) where TIdentity : AbstractIdentity
     {
-        IMongoCollection<StoredEvent> collection = database.GetCollection<StoredEvent>("Events");
-
-        int position = Sequence.GetNextSequenceValue("Events", database);
+        string aggregateIdType = typeof(TIdentity).AssemblyQualifiedName!;
+        string aggregateIdJson = JsonSerializer.Serialize(@event.AggregateRootId);
+        string eventType = @event.GetType().AssemblyQualifiedName!;
+        string eventJson = JsonSerializer.Serialize<object>(@event);
 
         var storedEvent = new StoredEvent
         {
             Id = Guid.NewGuid(),
-            AggregateRootId = @event.AggregateRootId,
-            Position = position,
             OccuredOn = @event.OccuredOn,
-            Event = @event
+            AggregateRootId = aggregateIdJson,
+            AggregateRootIdType = aggregateIdType,
+            Event = eventJson,
+            EventType = eventType
         };
 
-        await collection.InsertOneAsync(storedEvent, cancellationToken: cancellationToken);
-    }
-    
-    internal class Sequence
-    {
-        [BsonId]
-        public ObjectId Id { get; set; }
-        
-        public string Name { get; set; } = "Events";
-
-        public int Value { get; set;  }
-
-        public void Insert(IMongoDatabase database)
-        {
-            var collection = database.GetCollection<Sequence>("sequence");
-            var filter = Builders<Sequence>.Filter.Eq("Name", Name);
-            var update = Builders<Sequence>.Update.SetOnInsert("Name", Name)
-                .SetOnInsert("Value", 1);
-
-            var options = new UpdateOptions { IsUpsert = true };
-
-            collection.UpdateOne(filter, update, options);
-        }
-
-        internal static int GetNextSequenceValue(string sequenceName, IMongoDatabase database)
-        {
-            var collection = database.GetCollection<Sequence>("sequence");
-            var filter = Builders<Sequence>.Filter.Eq(a => a.Name, sequenceName);
-            var update = Builders<Sequence>.Update.Inc(a => a.Value, 1);
-            var sequence = collection.FindOneAndUpdate(filter, update);
-
-            return sequence.Value;
-        }
+        await dbContext.StoredEvents.AddAsync(storedEvent, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

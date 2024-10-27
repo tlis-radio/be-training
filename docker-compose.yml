@@ -6,39 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5247:5247"  # Map host port 5247 to container port 5247
-    depends_on:
-      - mongo
+      - "5247:5247"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - MONGODB_CONNECTION_STRING=mongodb://mongo:27017/
       - ASPNETCORE_HTTP_PORTS=5247
-    networks:
-      - app-network
-
-##TODO: MAKE THAT SHIT WORK SOMEHOW,
-  mongo:
-    ports:
-      - '27017:27017'
-    container_name: be_training-mongo1
-#    restart: on-failure
-    logging:
-      options:
-        max-size: 1g
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=mongoadmin
-      - MONGO_INITDB_ROOT_PASSWORD=bdung
-    image: mongo:latest
-    healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-
-networks:
-  app-network:
-    driver: bridge
-
-volumes:
-  mongo-data:
-    driver: local

@@ -1,4 +1,4 @@
-﻿using Application.Features.Notes;
+﻿using Application.Features;
 using Application.PipelineBehaviours;
 using FluentValidation;
 using MediatR;
@@ -16,6 +16,6 @@ public static class ApplicationModule
         });
         services.AddValidatorsFromAssembly(typeof(ApplicationModule).Assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehaviour<,>));
-        services.AddScoped<NoteProjectionsUnitOfWork>();
+        services.AddScoped<UnitOfWork>();
     }
 }

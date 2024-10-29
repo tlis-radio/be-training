@@ -10,7 +10,6 @@ WORKDIR /src
 COPY ["src/WebApi/WebApi.csproj", "src/WebApi/"]
 COPY ["src/Application/Application.csproj", "src/Application/"]
 COPY ["src/Core/Core.csproj", "src/Core/"]
-COPY ["src/Domain/Domain.csproj", "src/Domain/"]
 COPY ["src/Infrastructure/Infrastructure.csproj", "src/Infrastructure/"]
 
 # Restore dependencies
